@@ -6,18 +6,22 @@ namespace Flaskeautomaten
 {
     class Program
     {
-        static Queue<Bottle> producerBuffer;
-        static Queue<Bottle> sodaBuffer;
-        static Queue<Bottle> beerBuffer;
+        //Arrays
+        static Bottle[] producerBuffer;
+        static Bottle[] sodaBuffer;
+        static Bottle[] beerBuffer;
 
         static void Main(string[] args)
         {
-            int maxSize = 5;
 
-            producerBuffer = new Queue<Bottle>(maxSize);
-            sodaBuffer = new Queue<Bottle>(maxSize);
-            beerBuffer = new Queue<Bottle>(maxSize);
+            int maxSize = 15;
 
+            //Makes new shared arrays 
+            producerBuffer = new Bottle[maxSize];
+            sodaBuffer = new Bottle[maxSize];
+            beerBuffer = new Bottle[maxSize];
+
+            //Makes threads
             Thread producer = new Thread(FillBuffer);
             producer.Name = "Producer";
             producer.Start();
@@ -43,35 +47,40 @@ namespace Flaskeautomaten
         {
             while (true)
             {
-                List<Bottle> newBottles = new List<Bottle>();
-
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < producerBuffer.Length; i++)
                 {
-                    if (random.Next(0,2) == 0)
+                    //Makes new bottle object
+                    Bottle bottle;
+                    if (random.Next(0, 1) == 0)
                     {
-                        newBottles.Add(new Bottle("Beer"));
+                        bottle = new Bottle("Beer");
                     }
                     else
                     {
-                        newBottles.Add(new Bottle("Soda"));
+                        bottle = new Bottle("Soda");
                     }
-                }
 
-                for (int i = 0; i < newBottles.Count; i++)
-                {
-                    lock (producerBuffer)
+                    //Tries to lock producerBuffer
+                    Monitor.Enter(producerBuffer);
+                    try
                     {
-                        while (producerBuffer.Count > 1)
+                        //While the current loop bottle is a thing, we wait
+                        while (producerBuffer[i] != null)
                         {
                             Monitor.Wait(producerBuffer);
                         }
 
-                        producerBuffer.Enqueue(newBottles[i]);
-                        Console.WriteLine($"Producer Name: {newBottles[i].name} | Number: {newBottles[i].number} | Thread Name: {Thread.CurrentThread.Name}");
-                        Thread.Sleep(500);
+                        //When it is not a thing, we make it a thing
+                        producerBuffer[i] = bottle;
+                        Console.WriteLine($"Producer Name: {bottle.name} | Number: {bottle.number} | Thread Name: {Thread.CurrentThread.Name}");
+                        Thread.Sleep(50);
 
 
                         Monitor.PulseAll(producerBuffer);
+                    }
+                    finally
+                    {
+                        Monitor.Exit(producerBuffer);
                     }
                 }
             }
@@ -81,66 +90,107 @@ namespace Flaskeautomaten
         {
             while (true)
             {
-
-                
-                lock (producerBuffer)
+                Monitor.Enter(producerBuffer);
+                try
                 {
-                    while (producerBuffer.Count == 0)
+                    for (int i = 0; i < producerBuffer.Length; i++)
                     {
-                        Monitor.Wait(producerBuffer);
-                    }
-                    Bottle bottle = producerBuffer.Peek();
-                    Console.WriteLine($"SplitConsumer Name: {bottle.name} | Number: {bottle.number} | Thread Name: {Thread.CurrentThread.Name}");
-                    producerBuffer.Dequeue();
-
-                    if (bottle.name == "Beer")
-                    {
-                        lock (beerBuffer)
+                        //Checks if the current bottle is not null
+                        while (producerBuffer[i] == null)
                         {
-                            beerBuffer.Enqueue(bottle);
-
-                            Monitor.PulseAll(beerBuffer);
+                            Monitor.Wait(producerBuffer);
                         }
-                    }
-                    else
-                    {
-                        lock (sodaBuffer)
+
+                        Bottle bottle = producerBuffer[i];
+                        Console.WriteLine($"SplitConsumer Name: {bottle.name} | Number: {bottle.number} | Thread Name: {Thread.CurrentThread.Name}");
+                        producerBuffer[i] = null;
+
+                        //Checks which bottle it is, put it where the bottle belongs
+                        if (bottle.name == "Beer")
                         {
-                            sodaBuffer.Enqueue(bottle);
+                            Monitor.Enter(beerBuffer);
+                            try
+                            {
+                                for (int j = 0; j < beerBuffer.Length; j++)
+                                {
+                                    if (beerBuffer[i] == null)
+                                    {
+                                        beerBuffer[i] = bottle;
+                                        break;
+                                    }
+                                }
 
-                            Monitor.PulseAll(sodaBuffer);
+                                Monitor.PulseAll(beerBuffer);
+                            }
+                            finally
+                            {
+                                Monitor.Exit(beerBuffer);
+                            }
                         }
+                        else
+                        {
+                            Monitor.Enter(sodaBuffer);
+                            try
+                            {
+                                for (int j = 0; j < sodaBuffer.Length; j++)
+                                {
+                                    if (sodaBuffer[i] == null)
+                                    {
+                                        sodaBuffer[i] = bottle;
+                                        break;
+                                    }
+                                }
+
+                                Monitor.PulseAll(sodaBuffer);
+                            }
+                            finally
+                            {
+                                Monitor.Exit(sodaBuffer);
+                            }
+                        }
+                        Thread.Sleep(5000);
+
+                        Monitor.PulseAll(producerBuffer);
                     }
 
-
-                    Thread.Sleep(500);
-
-                    Monitor.PulseAll(producerBuffer);
+                    
                 }
-
-                
+                finally
+                {
+                    Monitor.Exit(producerBuffer);
+                }
             }
         }
 
-        static void ClearBuffer(object bottleQueueObj)
+        static void ClearBuffer(object bottleArrayObj)
         {
-            Queue<Bottle> bottleQueue = (Queue<Bottle>)(bottleQueueObj);
+            Bottle[] bottleArry = bottleArrayObj as Bottle[];
 
             while (true)
             {
-
-                lock (bottleQueue)
+                Monitor.Enter(bottleArry);
+                try
                 {
-                    while (bottleQueue.Count == 0)
+                    for (int i = 0; i < bottleArry.Length; i++)
                     {
-                        Monitor.Wait(bottleQueue);
+                        //Checks if the specific buf
+                        while (bottleArry[i] == null)
+                        {
+                            Monitor.Wait(bottleArry);
+                        }
+
+                        Console.WriteLine($"Consumer Name: {bottleArry[i].name} | Number: {bottleArry[i].number} | Thread Name: {Thread.CurrentThread.Name}");
+                        bottleArry[i] = null;
+                        Thread.Sleep(5000);
+
+                        Monitor.PulseAll(bottleArry);
+
                     }
 
-                    Console.WriteLine($"Consumer Name: {bottleQueue.Peek().name} | Number: {bottleQueue.Peek().number} | Thread Name: {Thread.CurrentThread.Name}");
-                    bottleQueue.Dequeue();
-                    Thread.Sleep(500);
-
-                    Monitor.PulseAll(bottleQueue);
+                }
+                finally
+                {
+                    Monitor.Exit(bottleArry);
                 }
             }
         }
