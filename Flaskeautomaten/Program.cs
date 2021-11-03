@@ -51,7 +51,7 @@ namespace Flaskeautomaten
                 {
                     //Makes new bottle object
                     Bottle bottle;
-                    if (random.Next(0, 1) == 0)
+                    if (random.Next(0, 2) == 0)
                     {
                         bottle = new Bottle("Beer");
                     }
@@ -72,7 +72,7 @@ namespace Flaskeautomaten
 
                         //When it is not a thing, we make it a thing
                         producerBuffer[i] = bottle;
-                        Console.WriteLine($"Producer Name: {bottle.name} | Number: {bottle.number} | Thread Name: {Thread.CurrentThread.Name}");
+                        Console.WriteLine($"Bottle Name: ".PadLeft(5) + $" {bottle.name} | Number: ".PadLeft(10) + $" {bottle.number}".PadLeft(3) + " | Thread Name: ".PadLeft(15) + $" {Thread.CurrentThread.Name}");
                         Thread.Sleep(50);
 
 
@@ -102,7 +102,7 @@ namespace Flaskeautomaten
                         }
 
                         Bottle bottle = producerBuffer[i];
-                        Console.WriteLine($"SplitConsumer Name: {bottle.name} | Number: {bottle.number} | Thread Name: {Thread.CurrentThread.Name}");
+                        Console.WriteLine($"Bottle Name: ".PadLeft(5) + $" {bottle.name} | Number: ".PadLeft(10) + $" {bottle.number}".PadLeft(3) + " | Thread Name: ".PadLeft(15) + $" {Thread.CurrentThread.Name}");
                         producerBuffer[i] = null;
 
                         //Checks which bottle it is, put it where the bottle belongs
@@ -148,7 +148,7 @@ namespace Flaskeautomaten
                                 Monitor.Exit(sodaBuffer);
                             }
                         }
-                        Thread.Sleep(5000);
+                        Thread.Sleep(500);
 
                         Monitor.PulseAll(producerBuffer);
                     }
@@ -179,9 +179,9 @@ namespace Flaskeautomaten
                             Monitor.Wait(bottleArry);
                         }
 
-                        Console.WriteLine($"Consumer Name: {bottleArry[i].name} | Number: {bottleArry[i].number} | Thread Name: {Thread.CurrentThread.Name}");
+                        Console.WriteLine($"Bottle Name: ".PadLeft(5) + $" {bottleArry[i].name} | Number: ".PadLeft(10) + $" {bottleArry[i].number}".PadLeft(3) + " | Thread Name: ".PadLeft(15) + $" {Thread.CurrentThread.Name}");
                         bottleArry[i] = null;
-                        Thread.Sleep(5000);
+                        Thread.Sleep(500);
 
                         Monitor.PulseAll(bottleArry);
 
